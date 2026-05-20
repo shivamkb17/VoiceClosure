@@ -3,12 +3,14 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { Star } from "lucide-react";
+import Image from "next/image";
 
 const testimonials = [
   {
     name: "Dr. Priya Sharma",
     role: "Owner, BrightSmile Dental Clinic",
-    avatar: "PS",
+    avatar: "/avatars/avatar-priya.png",
+    initials: "PS",
     quote:
       "VoiceCloser AI handles our after-hours calls brilliantly. We've seen a 40% increase in bookings since we started. Patients love the instant response.",
     stars: 5,
@@ -16,7 +18,8 @@ const testimonials = [
   {
     name: "Arjun Mehta",
     role: "Founder, Luxe Hair Studio",
-    avatar: "AM",
+    avatar: "/avatars/avatar-arjun.png",
+    initials: "AM",
     quote:
       "The AI receptionist sounds so natural that customers think they're talking to a real person. It's like having a 24/7 front desk manager.",
     stars: 5,
@@ -24,7 +27,8 @@ const testimonials = [
   {
     name: "Kavita Reddy",
     role: "Managing Partner, Reddy & Associates Law",
-    avatar: "KR",
+    avatar: "/avatars/avatar-kavita.png",
+    initials: "KR",
     quote:
       "Our consultation bookings doubled in the first month. The deposit collection feature ensures only serious clients book our time. Game-changer.",
     stars: 5,
@@ -89,8 +93,14 @@ export default function Testimonials() {
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-indigo to-brand-purple flex items-center justify-center text-xs font-bold text-white">
-                  {t.avatar}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-indigo to-brand-purple flex items-center justify-center text-xs font-bold text-white overflow-hidden relative">
+                  <Image
+                    src={t.avatar}
+                    alt={t.name}
+                    fill
+                    className="object-cover"
+                    sizes="40px"
+                  />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">{t.name}</div>

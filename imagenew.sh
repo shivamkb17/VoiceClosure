@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-GEMINI_API_KEY="USE_KEY"
+GEMINI_API_KEY="AIzaSyDeZM9yrzkZlTyFcy1u6tPM_akXeG7ogAk"
 DEFAULT_MODEL="gemini-3.1-flash-image-preview"
 
 # Defaults
