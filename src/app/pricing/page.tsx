@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { Check, X, ArrowRight, Minus, Plus, Zap } from "lucide-react";
-import Link from "next/link";
+import { Check, X, ArrowRight, Minus, Plus } from "lucide-react";
+
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 

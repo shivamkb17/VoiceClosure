@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Phone,
   PhoneOff,
@@ -24,7 +24,6 @@ interface Message {
 
 export default function DemoCallPage() {
   const params = useParams();
-  const router = useRouter();
   const scenarioId = params.scenario as string;
   const scenario = getScenarioById(scenarioId);
 
@@ -85,7 +84,7 @@ export default function DemoCallPage() {
     const sample = sc.sampleConversation;
     let delay = 4000;
 
-    sample.forEach((msg, i) => {
+    sample.forEach((msg) => {
       setTimeout(() => {
         if (msg.role === "user") {
           setAiStatus("AI is listening...");
