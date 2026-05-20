@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Star } from "lucide-react";
 import Image from "next/image";
 
@@ -38,6 +38,7 @@ const testimonials = [
 export default function Testimonials() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -94,13 +95,17 @@ export default function Testimonials() {
               {/* Author */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-indigo to-brand-purple flex items-center justify-center text-xs font-bold text-white overflow-hidden relative">
-                  <Image
-                    src={t.avatar}
-                    alt={t.name}
-                    fill
-                    className="object-cover"
-                    sizes="40px"
-                  />
+                  {t.initials}
+                  {!imgErrors[t.name] && (
+                    <Image
+                      src={t.avatar}
+                      alt={t.name}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                      onError={() => setImgErrors((prev) => ({ ...prev, [t.name]: true }))}
+                    />
+                  )}
                 </div>
                 <div>
                   <div className="text-sm font-semibold">{t.name}</div>
