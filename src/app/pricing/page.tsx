@@ -10,9 +10,9 @@ import Footer from "@/components/landing/Footer";
 
 const plans = [
   {
-    name: "Starter",
-    monthlyPrice: 1999,
-    yearlyPrice: 1599,
+    name: "Basic",
+    monthlyPrice: 10,
+    yearlyPrice: 100,
     description: "Perfect for small businesses getting started with AI reception.",
     features: [
       { name: "100 AI conversations/mo", included: true },
@@ -31,8 +31,8 @@ const plans = [
   },
   {
     name: "Pro",
-    monthlyPrice: 5999,
-    yearlyPrice: 4799,
+    monthlyPrice: 30,
+    yearlyPrice: 300,
     description: "For growing businesses that need unlimited power and insights.",
     features: [
       { name: "Unlimited AI conversations", included: true },
@@ -52,8 +52,8 @@ const plans = [
   },
   {
     name: "Agency",
-    monthlyPrice: 14999,
-    yearlyPrice: 11999,
+    monthlyPrice: 50,
+    yearlyPrice: 500,
     description: "White-label AI receptionist for agencies and enterprises.",
     features: [
       { name: "Unlimited AI conversations", included: true },
@@ -225,12 +225,12 @@ export default function PricingPage() {
 
                 <div className="mb-8">
                   <span className="text-4xl font-bold">
-                    ₹{isYearly ? plan.yearlyPrice.toLocaleString() : plan.monthlyPrice.toLocaleString()}
+                    ${isYearly ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice}
                   </span>
                   <span className="text-muted text-sm">/month</span>
                   {isYearly && (
                     <div className="text-xs text-emerald-400 mt-1">
-                      Billed ₹{(plan.yearlyPrice * 12).toLocaleString()}/year
+                      Billed ${plan.yearlyPrice}/year
                     </div>
                   )}
                 </div>

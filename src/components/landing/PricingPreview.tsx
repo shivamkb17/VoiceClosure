@@ -7,8 +7,8 @@ import { Check, ArrowRight } from "lucide-react";
 
 const plans = [
   {
-    name: "Starter",
-    price: "₹1,999",
+    name: "Basic",
+    price: "$10",
     period: "/month",
     description: "Perfect for small businesses getting started.",
     features: [
@@ -22,7 +22,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "₹5,999",
+    price: "$30",
     period: "/month",
     description: "For growing businesses that need more power.",
     features: [
@@ -38,7 +38,7 @@ const plans = [
   },
   {
     name: "Agency",
-    price: "₹14,999",
+    price: "$50",
     period: "/month",
     description: "White-label solution for agencies and enterprises.",
     features: [
