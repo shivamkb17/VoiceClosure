@@ -2,12 +2,14 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function FinalCTA() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [email, setEmail] = useState("");
+  const router = useRouter();
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -51,7 +53,10 @@ export default function FinalCTA() {
               placeholder="Enter your email"
               className="flex-1 px-5 py-3.5 rounded-xl glass border-glow text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-brand-indigo/50 transition-colors"
             />
-            <button className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-brand-indigo to-brand-purple text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all duration-300 hover:scale-[1.02] whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => router.push(email ? `/signup?email=${encodeURIComponent(email)}` : "/signup")}
+              className="group inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-brand-indigo to-brand-purple text-white font-semibold text-sm hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] transition-all duration-300 hover:scale-[1.02] whitespace-nowrap cursor-pointer">
               Get Started
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>

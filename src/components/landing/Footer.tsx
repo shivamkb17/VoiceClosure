@@ -3,21 +3,18 @@ import { Zap } from "lucide-react";
 
 const footerLinks = {
   Product: [
-    { name: "Features", href: "#features" },
+    { name: "Features", href: "/#features" },
     { name: "Pricing", href: "/pricing" },
     { name: "Demo", href: "/demo" },
-    { name: "Integrations", href: "#" },
   ],
   Company: [
-    { name: "About", href: "#" },
-    { name: "Blog", href: "#" },
-    { name: "Careers", href: "#" },
-    { name: "Contact", href: "#" },
+    { name: "About", href: "" },
+    { name: "Blog", href: "" },
+    { name: "Contact", href: "" },
   ],
   Legal: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" },
-    { name: "Cookie Policy", href: "#" },
+    { name: "Privacy Policy", href: "" },
+    { name: "Terms of Service", href: "" },
   ],
 };
 
@@ -49,12 +46,18 @@ export default function Footer() {
               <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted hover:text-foreground transition-colors"
-                    >
-                      {link.name}
-                    </Link>
+                    {link.href ? (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-muted hover:text-foreground transition-colors"
+                      >
+                        {link.name}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-muted-foreground cursor-default">
+                        {link.name}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
