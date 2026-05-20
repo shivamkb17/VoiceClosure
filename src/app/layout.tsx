@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005"),
   title: "VoiceCloser AI — Your AI Receptionist That Never Sleeps",
   description:
     "VoiceCloser AI is a browser-based AI receptionist that talks to customers naturally, qualifies leads, books appointments, and collects payments automatically using Stripe.",
