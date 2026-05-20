@@ -1,8 +1,19 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 
+const WAVE_DELAYS = [0.4, 0.7, 1, 0.8, 0.5, 0.9, 0.6, 0.3, 0.7];
+
 export default function GlowOrb() {
+  const waveBars = useMemo(
+    () =>
+      WAVE_DELAYS.map((delay) => ({
+        height: `${20 + delay * 20}px`,
+        duration: 1 + delay * 0.3,
+      })),
+    [],
+  );
   return (
     <div className="relative w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96">
       {/* Outer Pulse Ring 1 */}
@@ -48,15 +59,15 @@ export default function GlowOrb() {
 
         {/* Waveform Bars */}
         <div className="absolute inset-0 flex items-center justify-center gap-1">
-          {[0.4, 0.7, 1, 0.8, 0.5, 0.9, 0.6, 0.3, 0.7].map((delay, i) => (
+          {waveBars.map((bar, i) => (
             <motion.div
               key={i}
               className="w-1 rounded-full bg-white/60"
               animate={{
-                height: ["8px", `${20 + delay * 20}px`, "8px"],
+                height: ["8px", bar.height, "8px"],
               }}
               transition={{
-                duration: 1 + delay * 0.3,
+                duration: bar.duration,
                 repeat: Infinity,
                 ease: "easeInOut",
                 delay: i * 0.1,

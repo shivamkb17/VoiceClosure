@@ -1,13 +1,24 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import Link from "next/link";
 import { Play, ArrowRight } from "lucide-react";
 
 export default function DemoPreview() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const waveforms = useMemo(
+    () =>
+      Array.from({ length: 20 }, () => ({
+        minA: 8 + Math.random() * 8,
+        max: 16 + Math.random() * 32,
+        minB: 8 + Math.random() * 8,
+        duration: 1 + Math.random() * 0.5,
+      })),
+    [],
+  );
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -23,19 +34,19 @@ export default function DemoPreview() {
 
           {/* Decorative Waveform */}
           <div className="relative z-10 flex items-center justify-center gap-1 mb-8">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {waveforms.map((w, i) => (
               <motion.div
                 key={i}
                 className="w-1 rounded-full bg-gradient-to-t from-brand-indigo to-brand-purple"
                 animate={{
                   height: [
-                    `${8 + Math.random() * 8}px`,
-                    `${16 + Math.random() * 32}px`,
-                    `${8 + Math.random() * 8}px`,
+                    `${w.minA}px`,
+                    `${w.max}px`,
+                    `${w.minB}px`,
                   ],
                 }}
                 transition={{
-                  duration: 1 + Math.random() * 0.5,
+                  duration: w.duration,
                   repeat: Infinity,
                   ease: "easeInOut",
                   delay: i * 0.05,

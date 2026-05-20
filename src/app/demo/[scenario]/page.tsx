@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -37,6 +37,15 @@ export default function DemoCallPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const sampleIndex = useRef(0);
+
+  const callWaveBars = useMemo(
+    () =>
+      Array.from({ length: 7 }, () => ({
+        max: 12 + Math.random() * 24,
+        duration: 0.8 + Math.random() * 0.4,
+      })),
+    [],
+  );
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -222,19 +231,19 @@ export default function DemoCallPage() {
                 {/* Waveform (active) */}
                 {callState === "active" && (
                   <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 7 }).map((_, i) => (
+                    {callWaveBars.map((bar, i) => (
                       <motion.div
                         key={i}
                         className="w-1 rounded-full bg-white/70"
                         animate={{
                           height: [
                             "6px",
-                            `${12 + Math.random() * 24}px`,
+                            `${bar.max}px`,
                             "6px",
                           ],
                         }}
                         transition={{
-                          duration: 0.8 + Math.random() * 0.4,
+                          duration: bar.duration,
                           repeat: Infinity,
                           ease: "easeInOut",
                           delay: i * 0.08,
