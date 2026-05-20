@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { Check, X, ArrowRight, Minus, Plus } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 
@@ -109,6 +109,8 @@ export default function PricingPage() {
   const cardsInView = useInView(cardsRef, { once: true, margin: "-50px" });
   const faqInView = useInView(faqRef, { once: true, margin: "-50px" });
 
+  const router = useRouter();
+
   const handleCheckout = async (priceId: string) => {
     try {
       const res = await fetch("/api/stripe/checkout", {
@@ -121,7 +123,7 @@ export default function PricingPage() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        router.push(data.url);
       }
     } catch (error) {
       console.error("Checkout error:", error);
