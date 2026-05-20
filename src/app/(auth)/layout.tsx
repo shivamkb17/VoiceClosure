@@ -1,25 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Zap } from "lucide-react";
+
+const AUTH_WAVEFORMS = Array.from({ length: 12 }, () => ({
+  minA: 6 + Math.random() * 6,
+  max: 12 + Math.random() * 20,
+  minB: 6 + Math.random() * 6,
+  duration: 1.2 + Math.random() * 0.4,
+}));
 
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const waveforms = useMemo(
-    () =>
-      Array.from({ length: 12 }, () => ({
-        minA: 6 + Math.random() * 6,
-        max: 12 + Math.random() * 20,
-        minB: 6 + Math.random() * 6,
-        duration: 1.2 + Math.random() * 0.4,
-      })),
-    [],
-  );
   return (
     <div className="min-h-screen flex">
       {/* Left Panel — Animated Visual */}
@@ -78,7 +74,7 @@ export default function AuthLayout({
             transition={{ delay: 0.6, duration: 0.5 }}
             className="flex items-center justify-center gap-1 mt-8"
           >
-            {waveforms.map((w, i) => (
+            {AUTH_WAVEFORMS.map((w, i) => (
               <motion.div
                 key={i}
                 className="w-1 rounded-full bg-gradient-to-t from-brand-indigo/40 to-brand-purple/40"

@@ -1,24 +1,20 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { Play, ArrowRight } from "lucide-react";
+
+const DEMO_WAVEFORMS = Array.from({ length: 20 }, () => ({
+  minA: 8 + Math.random() * 8,
+  max: 16 + Math.random() * 32,
+  minB: 8 + Math.random() * 8,
+  duration: 1 + Math.random() * 0.5,
+}));
 
 export default function DemoPreview() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  const waveforms = useMemo(
-    () =>
-      Array.from({ length: 20 }, () => ({
-        minA: 8 + Math.random() * 8,
-        max: 16 + Math.random() * 32,
-        minB: 8 + Math.random() * 8,
-        duration: 1 + Math.random() * 0.5,
-      })),
-    [],
-  );
 
   return (
     <section className="relative py-32 overflow-hidden">
@@ -34,7 +30,7 @@ export default function DemoPreview() {
 
           {/* Decorative Waveform */}
           <div className="relative z-10 flex items-center justify-center gap-1 mb-8">
-            {waveforms.map((w, i) => (
+            {DEMO_WAVEFORMS.map((w, i) => (
               <motion.div
                 key={i}
                 className="w-1 rounded-full bg-gradient-to-t from-brand-indigo to-brand-purple"

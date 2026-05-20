@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "next/navigation";
 import {
@@ -22,6 +22,11 @@ interface Message {
   timestamp: Date;
 }
 
+const CALL_WAVE_BARS = Array.from({ length: 7 }, () => ({
+  max: 12 + Math.random() * 24,
+  duration: 0.8 + Math.random() * 0.4,
+}));
+
 export default function DemoCallPage() {
   const params = useParams();
   const scenarioId = params.scenario as string;
@@ -36,15 +41,6 @@ export default function DemoCallPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const sampleIndex = useRef(0);
-
-  const callWaveBars = useMemo(
-    () =>
-      Array.from({ length: 7 }, () => ({
-        max: 12 + Math.random() * 24,
-        duration: 0.8 + Math.random() * 0.4,
-      })),
-    [],
-  );
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -230,7 +226,7 @@ export default function DemoCallPage() {
                 {/* Waveform (active) */}
                 {callState === "active" && (
                   <div className="flex items-center gap-0.5">
-                    {callWaveBars.map((bar, i) => (
+                    {CALL_WAVE_BARS.map((bar, i) => (
                       <motion.div
                         key={i}
                         className="w-1 rounded-full bg-white/70"
