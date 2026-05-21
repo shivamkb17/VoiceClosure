@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -142,8 +143,14 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
   const audioChunksRef = useRef<Blob[]>([]);
   const isAiActiveRef = useRef<boolean>(false);
   const ttsAbortControllerRef = useRef<AbortController | null>(null);
+  const [micAccessDenied, setMicAccessDenied] = useState(false);
   const micAccessDeniedRef = useRef<boolean>(false);
+  const setMicAccessState = (val: boolean) => {
+    micAccessDeniedRef.current = val;
+    setMicAccessDenied(val);
+  };
   const noDeviceDetectedRef = useRef<boolean>(false);
+  const handleGenerateResponseRef = useRef<any>(null);
 
   // Refs to mirror state for use inside SpeechRecognition callbacks (avoids stale closures)
   const callStateRef = useRef<CallState>(callState);
@@ -393,14 +400,14 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
       const userMsg: Message = { role: "user", text: transcript, timestamp: new Date() };
       setMessages((prev) => {
         const nextMsgs = [...prev, userMsg];
-        setTimeout(() => handleGenerateResponse(nextMsgs), 0);
+        setTimeout(() => handleGenerateResponseRef.current?.(nextMsgs), 0);
         return nextMsgs;
       });
     };
 
     rec.onerror = (event: any) => {
       if (event.error === "not-allowed") {
-        micAccessDeniedRef.current = true;
+        setMicAccessState(true);
         setAiStatus("Mic Access Denied");
         console.warn("Speech recognition not allowed: falling back to ElevenLabs Scribe (Push-to-Talk).");
         setSttEngine("elevenlabs");
@@ -587,6 +594,9 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
       setAiStatus("Ready");
     }
   };
+  useEffect(() => {
+    handleGenerateResponseRef.current = handleGenerateResponse;
+  });
 
   // Clean up
   useEffect(() => {
@@ -609,7 +619,7 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
 
   const startCall = async () => {
     // Reset flags at the start before any checks
-    micAccessDeniedRef.current = false;
+    setMicAccessState(false);
     noDeviceDetectedRef.current = false;
 
     // Request microphone access inside the user gesture to satisfy browser policies
@@ -623,7 +633,7 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
           noDeviceDetectedRef.current = true;
           setAiStatus("No Mic Found");
         } else {
-          micAccessDeniedRef.current = true;
+          setMicAccessState(true);
           setAiStatus("Mic Access Denied");
         }
         setSttEngine("elevenlabs");
@@ -746,9 +756,10 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       router.refresh();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Save error:", err);
-      setError(err.message || "Failed to save settings");
+      const errorMsg = err instanceof Error ? err.message : "Failed to save settings";
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -770,7 +781,7 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
       setForm((prev) => ({ ...prev, systemPrompt: polished }));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Polishing error:", err);
       setError("AI Refinement failed. Please check connection.");
     } finally {
@@ -1042,7 +1053,7 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
                   </motion.div>
                 )}
 
-                {callState === "active" && micAccessDeniedRef.current && (
+                {callState === "active" && micAccessDenied && (
                   <div className="max-w-[280px] text-center px-4 py-3 mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] text-amber-300 z-10">
                     <p className="font-bold mb-1">Hands-Free Mode Blocked</p>
                     <p className="opacity-80 leading-relaxed">
@@ -1352,7 +1363,7 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs font-mono focus:outline-none focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/20 transition-all text-foreground resize-none leading-relaxed"
                     placeholder="Instructions defining role, facts, pricing, constraints, call scheduling details..."
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">Define the receptionist's persona, schedule flow, pricing policies, FAQs, and lead capture questions.</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Define the receptionist&apos;s persona, schedule flow, pricing policies, FAQs, and lead capture questions.</p>
                 </div>
               </div>
             )}
