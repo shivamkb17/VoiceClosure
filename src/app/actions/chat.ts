@@ -1,6 +1,10 @@
 "use server";
 
-export async function getAiResponse(systemPrompt: string, messages: { role: "user" | "ai"; text: string }[]) {
+export async function getAiResponse(
+  systemPrompt: string,
+  messages: { role: "user" | "ai"; text: string }[],
+  tier: "fast" | "reasoning" = "fast"
+) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.warn("OPENROUTER_API_KEY is not set in env variables.");
@@ -13,6 +17,12 @@ export async function getAiResponse(systemPrompt: string, messages: { role: "use
     content: msg.text,
   }));
 
+  // Define fallback model hierarchy based on required intelligence/latency tier
+  const models =
+    tier === "reasoning"
+      ? ["anthropic/claude-3.5-sonnet", "openai/gpt-4o"]
+      : ["google/gemini-2.5-flash", "openai/gpt-4o-mini"];
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -23,13 +33,13 @@ export async function getAiResponse(systemPrompt: string, messages: { role: "use
         "X-Title": "VoiceCloser AI",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        models,
         messages: [
           { role: "system", content: systemPrompt },
           ...formattedMessages,
         ],
         temperature: 0.7,
-        max_tokens: 150,
+        max_tokens: 250,
       }),
     });
 
@@ -47,3 +57,4 @@ export async function getAiResponse(systemPrompt: string, messages: { role: "use
     throw error;
   }
 }
+
