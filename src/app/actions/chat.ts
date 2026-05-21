@@ -58,3 +58,66 @@ export async function getAiResponse(
   }
 }
 
+export async function getAiResponseWithTools(
+  systemPrompt: string,
+  messages: { role: "user" | "ai"; text: string }[],
+  tools: any[],
+  tier: "fast" | "reasoning" = "fast"
+) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    console.warn("OPENROUTER_API_KEY is not set in env variables.");
+    throw new Error("API key missing");
+  }
+
+  const formattedMessages = messages.map((msg) => ({
+    role: msg.role === "ai" ? "assistant" : "user",
+    content: msg.text,
+  }));
+
+  const models =
+    tier === "reasoning"
+      ? ["anthropic/claude-3.5-sonnet", "openai/gpt-4o"]
+      : ["google/gemini-2.5-flash", "openai/gpt-4o-mini"];
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://voicecloser.ai",
+        "X-Title": "VoiceCloser AI",
+      },
+      body: JSON.stringify({
+        models,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...formattedMessages,
+        ],
+        tools,
+        tool_choice: "auto",
+        temperature: 0.7,
+        max_tokens: 350,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("OpenRouter API error details:", errText);
+      throw new Error(`OpenRouter API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0]?.message;
+    return {
+      text: (choice?.content || "").trim(),
+      toolCalls: choice?.tool_calls || null,
+    };
+  } catch (error) {
+    console.error("Failed to fetch tool response from OpenRouter:", error);
+    throw error;
+  }
+}
+
+
