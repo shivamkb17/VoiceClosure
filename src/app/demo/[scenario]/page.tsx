@@ -49,6 +49,12 @@ function DemoCallInner() {
   const recognitionRef = useRef<any>(null);
   const speakingRef = useRef<boolean>(false);
 
+  // Refs to mirror state for SpeechRecognition callbacks (avoids stale closures)
+  const callStateRef = useRef<CallState>(callState);
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
   // Initialize ElevenLabs Conversational AI hook
   const conversation = useConversation({
     onConnect: () => {
@@ -138,7 +144,7 @@ function DemoCallInner() {
   };
 
   const startListening = () => {
-    if (typeof window === "undefined" || isMuted) return;
+    if (typeof window === "undefined" || isMutedRef.current) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -174,16 +180,16 @@ function DemoCallInner() {
     rec.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
       if (event.error === "not-allowed") {
-        setAiStatus("Microphone access denied");
+        setAiStatus("Microphone access denied — use text input below");
       } else if (event.error === "no-speech") {
-        if (callState === "active" && !speakingRef.current) {
+        if (callStateRef.current === "active" && !speakingRef.current && !isMutedRef.current) {
           try { rec.start(); } catch {}
         }
       }
     };
 
     rec.onend = () => {
-      if (callState === "active" && !isMuted && !speakingRef.current && aiStatus === "AI is listening...") {
+      if (callStateRef.current === "active" && !isMutedRef.current && !speakingRef.current) {
         try { rec.start(); } catch {}
       }
     };
@@ -241,8 +247,19 @@ function DemoCallInner() {
     };
   }, []);
 
-  const startSimulatedCall = () => {
+  const startSimulatedCall = async () => {
     if (!scenario) return;
+
+    // Pre-request microphone access inside user gesture before SpeechRecognition starts
+    if (typeof window !== "undefined" && navigator.mediaDevices) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err) {
+        console.warn("Mic access denied for simulated call, text input still available:", err);
+      }
+    }
+
     setCallState("connecting");
     setMessages([]);
     setElapsed(0);
@@ -266,6 +283,17 @@ function DemoCallInner() {
 
   const startCall = async () => {
     if (!scenario) return;
+
+    // Pre-request microphone access inside user gesture
+    if (typeof window !== "undefined" && navigator.mediaDevices) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err) {
+        console.warn("Mic access denied, falling back to simulated call:", err);
+      }
+    }
+
     setCallState("connecting");
     setMessages([]);
     setElapsed(0);

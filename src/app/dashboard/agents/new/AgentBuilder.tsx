@@ -27,7 +27,11 @@ const VOICE_OPTIONS = [
   { id: "onyx", name: "Onyx", description: "Authoritative & rich", color: "from-violet-500 to-purple-400" },
   { id: "nova", name: "Nova", description: "Friendly & energetic", color: "from-emerald-500 to-teal-400" },
   { id: "shimmer", name: "Shimmer", description: "Soft & professional", color: "from-indigo-500 to-blue-400" },
+  { id: "aditi", name: "Aditi (IN)", description: "Warm Indian Female", color: "from-orange-500 to-yellow-400" },
+  { id: "karan", name: "Karan (IN)", description: "Calm Indian Male", color: "from-red-500 to-orange-400" },
+  { id: "priya", name: "Priya (IN)", description: "Friendly Indian Female", color: "from-yellow-500 to-emerald-400" },
 ];
+
 
 const PERSONALITY_OPTIONS = [
   { id: "professional", label: "Professional", emoji: "💼", desc: "Formal, authoritative, trustworthy" },

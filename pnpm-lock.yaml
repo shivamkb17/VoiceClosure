@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  livekit-client: 2.16.1
+
 importers:
 
   .:

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Bot, Plus, Phone, Users, Power, PowerOff, MoreVertical } from "lucide-react";
+import { Bot, Plus, Phone, Users, Power, PowerOff, MoreVertical, ArrowRight } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -116,11 +116,19 @@ export default function AgentsList({ agents }: { agents: Agent[] }) {
                   </div>
                 </div>
 
-                {/* Personality */}
-                <div className="mt-3">
+                {/* Personality & Demo Test */}
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.04] pt-3">
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize bg-gradient-to-r ${gradient} text-white`}>
                     {agent.personality}
                   </span>
+                  
+                  <Link
+                    href={`/dashboard/agents/${agent.id}/demo`}
+                    className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-brand-indigo hover:border-brand-indigo/20 text-white transition-all duration-300 cursor-pointer"
+                  >
+                    <span>Test & Improve</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </motion.div>
             );
