@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       billing_address_collection: "required",
       metadata: {
         user_id: user.id,
+        plan: priceId,
       },
     };
 

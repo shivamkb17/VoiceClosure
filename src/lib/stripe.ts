@@ -23,3 +23,13 @@ export const PRICE_IDS: Record<string, Record<string, string>> = {
     year: process.env.STRIPE_AGENCY_YEARLY_PRICE_ID || "price_agency_yearly",
   },
 };
+
+export function getPlanFromPriceId(stripePriceId: string): string {
+  for (const [planName, intervals] of Object.entries(PRICE_IDS)) {
+    if (intervals.month === stripePriceId || intervals.year === stripePriceId) {
+      return planName;
+    }
+  }
+  return "free";
+}
+

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, getPlanFromPriceId } from "@/lib/stripe";
 import Stripe from "stripe";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.user_id;
       const customerId = session.customer as string;
+      const plan = session.metadata?.plan || "free";
 
       if (userId && customerId) {
         // Link Stripe customer to user profile and activate subscription
@@ -53,35 +54,28 @@ export async function POST(req: NextRequest) {
           .from("profiles")
           .update({
             stripe_customer_id: customerId,
-            subscription_status: "active",
+            subscription_status: plan,
           })
           .eq("id", userId);
       }
 
-      console.log("Checkout completed:", session.id, "User:", userId);
+      console.log("Checkout completed:", session.id, "User:", userId, "Plan:", plan);
       break;
     }
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = subscription.customer as string;
+      const priceId = subscription.items.data[0]?.price.id;
 
-      // Map Stripe status to our status
-      const statusMap: Record<string, string> = {
-        active: "active",
-        past_due: "past_due",
-        trialing: "trialing",
-        canceled: "canceled",
-        unpaid: "unpaid",
-      };
-
-      const status = statusMap[subscription.status] || subscription.status;
+      // Reverse map the price ID to the local tier name (starter, pro, agency)
+      const plan = priceId ? getPlanFromPriceId(priceId) : "free";
 
       await supabase
         .from("profiles")
-        .update({ subscription_status: status })
+        .update({ subscription_status: plan })
         .eq("stripe_customer_id", customerId);
 
-      console.log("Subscription updated:", subscription.id, "Status:", status);
+      console.log("Subscription updated:", subscription.id, "Plan:", plan);
       break;
     }
     case "customer.subscription.deleted": {
@@ -90,7 +84,7 @@ export async function POST(req: NextRequest) {
 
       await supabase
         .from("profiles")
-        .update({ subscription_status: "canceled" })
+        .update({ subscription_status: "free" })
         .eq("stripe_customer_id", customerId);
 
       console.log("Subscription cancelled:", subscription.id);
