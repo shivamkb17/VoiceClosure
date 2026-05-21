@@ -15,8 +15,10 @@ import {
   Check,
   Loader2,
   Lightbulb,
+  BookOpen,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+import { uploadAgentKnowledge } from "@/app/actions/knowledge";
 
 const VOICE_OPTIONS = [
   { id: "alloy", name: "Alloy", description: "Neutral & balanced", color: "from-blue-500 to-cyan-400" },
@@ -46,7 +48,7 @@ const BUSINESS_TEMPLATES = [
   { type: "custom", label: "Custom", emoji: "✨" },
 ];
 
-const STEPS = ["Basics", "Personality", "Voice", "Prompt", "Review"];
+const STEPS = ["Basics", "Personality", "Voice", "Knowledge", "Prompt", "Review"];
 
 function generateSystemPrompt(name: string, businessType: string, personality: string): string {
   const personalityTraits: Record<string, string> = {
@@ -92,6 +94,7 @@ export default function AgentBuilder({ userId }: { userId: string }) {
     personality: "professional",
     voiceId: "alloy",
     language: "en",
+    knowledge: "",
     systemPrompt: "",
   });
 
@@ -113,7 +116,8 @@ export default function AgentBuilder({ userId }: { userId: string }) {
     if (step === 0) return form.name.length >= 2 && form.greeting.length >= 10;
     if (step === 1) return !!form.personality;
     if (step === 2) return !!form.voiceId;
-    if (step === 3) return form.systemPrompt.length >= 20;
+    if (step === 3) return true; // Knowledge is optional
+    if (step === 4) return form.systemPrompt.length >= 20;
     return true;
   };
 
@@ -126,22 +130,36 @@ export default function AgentBuilder({ userId }: { userId: string }) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const { error: insertError } = await supabase.from("voice_agents").insert({
-      user_id: userId,
-      name: form.name,
-      business_type: form.businessType || null,
-      greeting: form.greeting,
-      system_prompt: form.systemPrompt,
-      voice_id: form.voiceId,
-      language: form.language,
-      personality: form.personality,
-      is_active: true,
-    });
+    // Create the voice agent record and return its ID
+    const { data: agentData, error: insertError } = await supabase
+      .from("voice_agents")
+      .insert({
+        user_id: userId,
+        name: form.name,
+        business_type: form.businessType || null,
+        greeting: form.greeting,
+        system_prompt: form.systemPrompt,
+        voice_id: form.voiceId,
+        language: form.language,
+        personality: form.personality,
+        is_active: true,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       setError(insertError.message);
       setSaving(false);
       return;
+    }
+
+    // If knowledge text was provided, process and upload embeddings
+    if (agentData?.id && form.knowledge.trim()) {
+      const uploadRes = await uploadAgentKnowledge(agentData.id, form.knowledge);
+      if (!uploadRes.success) {
+        console.warn("Knowledge base upload warning:", uploadRes.error);
+        // We log but don't fail the entire creation if embeddings fail (e.g. key limits)
+      }
     }
 
     router.push("/dashboard/agents");
@@ -362,8 +380,39 @@ export default function AgentBuilder({ userId }: { userId: string }) {
           </div>
         )}
 
-        {/* Step 3: System Prompt */}
+        {/* Step 3: Knowledge Base */}
         {step === 3 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-400 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-lg">Knowledge Base</h2>
+                <p className="text-xs text-muted">Provide FAQs, pricing, rules, and policies for the receptionist</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-brand-indigo/5 border border-brand-indigo/20 text-xs text-brand-indigo font-medium">
+              <Lightbulb className="w-4 h-4 shrink-0" />
+              <span>This content will be chunked and stored in a vector database for semantic retrieval during calls.</span>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">FAQs & Business Policies (Optional)</label>
+              <textarea
+                value={form.knowledge}
+                onChange={(e) => update("knowledge", e.target.value)}
+                placeholder="Example:&#10;Q: What are your hours?&#10;A: We are open Monday to Friday from 9 AM to 6 PM.&#10;&#10;Q: What is the cancellation policy?&#10;A: Cancellations require 24 hours notice to avoid a $15 fee.&#10;&#10;Q: Where are you located?&#10;A: 123 Main Street, Suite 400."
+                rows={10}
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand-indigo/50 focus:ring-1 focus:ring-brand-indigo/20 transition-all text-sm resize-none"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: System Prompt */}
+        {step === 4 && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center">
@@ -402,8 +451,8 @@ export default function AgentBuilder({ userId }: { userId: string }) {
           </div>
         )}
 
-        {/* Step 4: Review */}
-        {step === 4 && (
+        {/* Step 5: Review */}
+        {step === 5 && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-indigo to-brand-purple flex items-center justify-center">
@@ -422,6 +471,7 @@ export default function AgentBuilder({ userId }: { userId: string }) {
                 { label: "Personality", value: PERSONALITY_OPTIONS.find((p) => p.id === form.personality)?.label || form.personality },
                 { label: "Voice", value: VOICE_OPTIONS.find((v) => v.id === form.voiceId)?.name || form.voiceId },
                 { label: "Language", value: form.language.toUpperCase() },
+                { label: "Knowledge Base", value: form.knowledge ? `${form.knowledge.length} characters` : "None uploaded" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between py-3 border-b border-white/[0.04]">
                   <span className="text-sm text-muted">{item.label}</span>
@@ -462,7 +512,7 @@ export default function AgentBuilder({ userId }: { userId: string }) {
         {step < STEPS.length - 1 ? (
           <button
             onClick={() => {
-              if (step === 2 && !form.systemPrompt) {
+              if (step === 3 && !form.systemPrompt) {
                 setForm((prev) => ({
                   ...prev,
                   systemPrompt: generateSystemPrompt(prev.name, prev.businessType, prev.personality),
