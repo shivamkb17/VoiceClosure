@@ -15,9 +15,18 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
 
-  if (!sig || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!sig) {
+    console.error("Stripe webhook verification error: stripe-signature header is missing.");
     return NextResponse.json(
-      { error: "Missing signature or webhook secret" },
+      { error: "Missing stripe-signature header" },
+      { status: 400 }
+    );
+  }
+
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("Stripe webhook verification error: STRIPE_WEBHOOK_SECRET environment variable is not defined.");
+    return NextResponse.json(
+      { error: "Missing STRIPE_WEBHOOK_SECRET env variable" },
       { status: 400 }
     );
   }
@@ -30,8 +39,8 @@ export async function POST(req: NextRequest) {
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+  } catch (err: any) {
+    console.error("Stripe webhook verification error: Webhook signature verification failed.", err.message || err);
     return NextResponse.json(
       { error: "Invalid signature" },
       { status: 400 }
