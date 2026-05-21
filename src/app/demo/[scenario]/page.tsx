@@ -242,6 +242,7 @@ export default function DemoCallPage() {
   }, []);
 
   const startSimulatedCall = () => {
+    if (!scenario) return;
     setCallState("connecting");
     setMessages([]);
     setElapsed(0);
