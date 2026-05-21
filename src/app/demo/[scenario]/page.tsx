@@ -15,7 +15,7 @@ import {
 import { getScenarioById, type DemoScenario } from "@/lib/prompts";
 import Link from "next/link";
 import { getAiResponse } from "@/app/actions/chat";
-import { useConversation } from "@elevenlabs/react";
+import { useConversation, ConversationProvider } from "@elevenlabs/react";
 
 type CallState = "idle" | "connecting" | "active" | "ended";
 
@@ -30,7 +30,7 @@ const CALL_WAVE_BARS = Array.from({ length: 7 }, () => ({
   duration: 0.8 + Math.random() * 0.4,
 }));
 
-export default function DemoCallPage() {
+function DemoCallInner() {
   const params = useParams();
   const scenarioId = params.scenario as string;
   const scenario = getScenarioById(scenarioId);
@@ -707,4 +707,12 @@ function getLocalFallbackResponse(userText: string, scenario: DemoScenario): str
   }
 
   return "Thank you for sharing that. I've noted it down. Could you please provide your name and phone number so I can confirm your request?";
+}
+
+export default function DemoCallPage() {
+  return (
+    <ConversationProvider>
+      <DemoCallInner />
+    </ConversationProvider>
+  );
 }
