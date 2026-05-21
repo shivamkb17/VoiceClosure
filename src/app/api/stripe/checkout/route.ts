@@ -36,13 +36,15 @@ export async function POST(req: NextRequest) {
 
     const sessionConfig: Record<string, unknown> = {
       mode: "subscription",
-      payment_method_types: ["card"],
       line_items: [
         {
           price: stripePriceId,
           quantity: 1,
         },
       ],
+      subscription_data: {
+        trial_period_days: 14,
+      },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005"}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3005"}/pricing?canceled=true`,
       allow_promotion_codes: true,
