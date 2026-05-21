@@ -149,7 +149,13 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
     micAccessDeniedRef.current = val;
     setMicAccessDenied(val);
   };
+  const [noDeviceDetected, setNoDeviceDetected] = useState(false);
   const noDeviceDetectedRef = useRef<boolean>(false);
+  const setNoDeviceState = (val: boolean) => {
+    noDeviceDetectedRef.current = val;
+    setNoDeviceDetected(val);
+  };
+  const audioContextRef = useRef<AudioContext | null>(null);
   const handleGenerateResponseRef = useRef<any>(null);
 
   // Refs to mirror state for use inside SpeechRecognition callbacks (avoids stale closures)
@@ -184,6 +190,42 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  /**
+   * Robust microphone stream acquisition.
+   * Tries the system default first; on NotFoundError, iterates through all
+   * enumerated audioinput devices by explicit deviceId until one opens.
+   * Returns the MediaStream, or throws if absolutely no device can be opened.
+   */
+  const getAudioStream = async (): Promise<MediaStream> => {
+    // Attempt 1: default device
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (defaultErr: any) {
+      if (defaultErr.name !== "NotFoundError") throw defaultErr;
+      console.warn("Default audio device failed, trying specific devices...");
+    }
+
+    // Attempt 2: iterate enumerated devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter(
+      (d) => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications"
+    );
+
+    for (const device of audioInputs) {
+      try {
+        console.log(`Trying audio device: ${device.label || device.deviceId}`);
+        return await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: device.deviceId } },
+        });
+      } catch (devErr: any) {
+        console.warn(`Device ${device.label || device.deviceId} failed:`, devErr.name);
+        continue;
+      }
+    }
+
+    throw new DOMException("No audio input device could be opened", "NotFoundError");
   };
 
   // Helper to dynamically detect language from response text
@@ -342,22 +384,57 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
 
-      audio.onended = () => {
-        speakingRef.current = false;
-        URL.revokeObjectURL(audioUrl);
-        onEnd?.();
+      // Try HTMLAudioElement first; fall back to AudioContext (decodeAudioData) if it fails
+      const playWithAudioElement = (): Promise<void> =>
+        new Promise((resolve, reject) => {
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+
+          audio.onended = () => {
+            speakingRef.current = false;
+            URL.revokeObjectURL(audioUrl);
+            onEnd?.();
+            resolve();
+          };
+
+          audio.onerror = () => {
+            reject(new Error("HTMLAudioElement playback failed"));
+          };
+
+          audio.play().catch(reject);
+        });
+
+      const playWithAudioContext = async (): Promise<void> => {
+        try {
+          const ctx = audioContextRef.current || new AudioContext();
+          audioContextRef.current = ctx;
+          if (ctx.state === "suspended") await ctx.resume();
+
+          const arrayBuf = await audioBlob.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuf);
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(ctx.destination);
+          source.onended = () => {
+            speakingRef.current = false;
+            URL.revokeObjectURL(audioUrl);
+            onEnd?.();
+          };
+          source.start(0);
+        } catch (ctxErr) {
+          console.warn("AudioContext playback also failed:", ctxErr);
+          URL.revokeObjectURL(audioUrl);
+          triggerFallback();
+        }
       };
 
-      audio.onerror = (err) => {
-        console.warn("ElevenLabs Audio playback failed, falling back to browser SpeechSynthesis:", err);
-        URL.revokeObjectURL(audioUrl);
-        triggerFallback();
-      };
-
-      await audio.play();
+      try {
+        await playWithAudioElement();
+      } catch {
+        console.warn("HTMLAudioElement playback failed, trying AudioContext...");
+        await playWithAudioContext();
+      }
     } catch (err: any) {
       if (err.name === "AbortError") {
         return; // Silently ignore aborted requests
@@ -449,6 +526,12 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
   const startElevenLabsRecording = async () => {
     if (typeof window === "undefined" || !navigator.mediaDevices) return;
 
+    // Pre-check: does the system have any audio input device at all?
+    if (noDeviceDetectedRef.current) {
+      setAiStatus("No Microphone Detected — connect a mic and reload");
+      return;
+    }
+
     // Stop playback if speaking
     if (audioRef.current) {
       audioRef.current.pause();
@@ -457,7 +540,16 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
     speakingRef.current = false;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Verify an audio input device exists before requesting the stream
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasAudioInput = devices.some((d) => d.kind === "audioinput");
+      if (!hasAudioInput) {
+        setNoDeviceState(true);
+        setAiStatus("No Microphone Detected — connect a mic and reload");
+        return;
+      }
+
+      const stream = await getAudioStream();
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -514,10 +606,13 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
     } catch (err: any) {
       console.error("Failed to access microphone:", err);
       if (err.name === "NotFoundError" || err.message?.includes("device not found")) {
-        noDeviceDetectedRef.current = true;
-        setAiStatus("No Mic Found");
-      } else {
+        setNoDeviceState(true);
+        setAiStatus("No Microphone Detected — connect a mic and reload");
+      } else if (err.name === "NotAllowedError") {
+        setMicAccessState(true);
         setAiStatus("Mic Access Denied");
+      } else {
+        setAiStatus("Mic error — please try again");
       }
     }
   };
@@ -620,22 +715,53 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
   const startCall = async () => {
     // Reset flags at the start before any checks
     setMicAccessState(false);
-    noDeviceDetectedRef.current = false;
+    setNoDeviceState(false);
 
-    // Request microphone access inside the user gesture to satisfy browser policies
+    // Unlock AudioContext on user gesture (required by Chrome autoplay policy)
+    if (!audioContextRef.current) {
+      try {
+        audioContextRef.current = new AudioContext();
+      } catch { /* AudioContext not available */ }
+    }
+    if (audioContextRef.current?.state === "suspended") {
+      audioContextRef.current.resume().catch(() => {});
+    }
+
+    // Check microphone availability via enumerateDevices + getUserMedia
     if (typeof window !== "undefined" && navigator.mediaDevices && mode === "voice") {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (err: any) {
-        console.warn("User denied microphone access or device not available:", err);
-        if (err.name === "NotFoundError" || err.message?.includes("device not found")) {
-          noDeviceDetectedRef.current = true;
-          setAiStatus("No Mic Found");
+        // Step 1: Check if any audio input device exists
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((d) => d.kind === "audioinput");
+
+        if (audioInputs.length === 0) {
+          console.warn("No audio input devices detected by enumerateDevices.");
+          setNoDeviceState(true);
+          setAiStatus("No Microphone Detected");
+          setSttEngine("elevenlabs");
         } else {
-          setMicAccessState(true);
-          setAiStatus("Mic Access Denied");
+          // Step 2: Attempt to open a mic stream (tries default, then each device)
+          try {
+            const stream = await getAudioStream();
+            stream.getTracks().forEach((track) => track.stop());
+            // Mic is working — keep browser STT engine
+          } catch (err: any) {
+            console.warn("Microphone access check failed:", err.name, err.message);
+            if (err.name === "NotFoundError") {
+              setNoDeviceState(true);
+              setAiStatus("No Microphone Detected");
+            } else if (err.name === "NotAllowedError" || err.name === "SecurityError") {
+              setMicAccessState(true);
+              setAiStatus("Mic Access Denied");
+            } else {
+              setNoDeviceState(true);
+              setAiStatus("Microphone Unavailable");
+            }
+            setSttEngine("elevenlabs");
+          }
         }
+      } catch (enumErr) {
+        console.warn("enumerateDevices() failed:", enumErr);
         setSttEngine("elevenlabs");
       }
     }
@@ -1053,11 +1179,20 @@ export default function AgentDemoClient({ agent, userId }: AgentDemoClientProps)
                   </motion.div>
                 )}
 
-                {callState === "active" && micAccessDenied && (
+                {callState === "active" && noDeviceDetected && (
+                  <div className="max-w-[300px] text-center px-4 py-3 mb-6 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] text-red-300 z-10">
+                    <p className="font-bold mb-1">⚠️ No Microphone Detected</p>
+                    <p className="opacity-80 leading-relaxed">
+                      Your system has no audio input device available. Please connect a microphone, check System Settings &gt; Sound &gt; Input, then reload this page. You can still use <strong>Chat Mode</strong> below.
+                    </p>
+                  </div>
+                )}
+
+                {callState === "active" && micAccessDenied && !noDeviceDetected && (
                   <div className="max-w-[280px] text-center px-4 py-3 mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] text-amber-300 z-10">
                     <p className="font-bold mb-1">Hands-Free Mode Blocked</p>
                     <p className="opacity-80 leading-relaxed">
-                      Chrome blocked hands-free speech recognition. Please verify macOS settings (System Settings &gt; Privacy &gt; Speech Recognition &gt; Chrome) or use the **ElevenLabs Scribe** (Push-to-Talk) button below.
+                      Chrome blocked microphone access. Please click the lock icon in the address bar &gt; Site Settings &gt; Microphone &gt; Allow, then reload. You can use <strong>Push-to-Talk</strong> or <strong>Chat Mode</strong> below.
                     </p>
                   </div>
                 )}
