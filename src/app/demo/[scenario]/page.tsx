@@ -15,6 +15,7 @@ import {
 import { getScenarioById, type DemoScenario } from "@/lib/prompts";
 import Link from "next/link";
 import { getAiResponse } from "@/app/actions/chat";
+import { useConversation } from "@elevenlabs/react";
 
 type CallState = "idle" | "connecting" | "active" | "ended";
 
@@ -41,11 +42,44 @@ export default function DemoCallPage() {
   const [aiStatus, setAiStatus] = useState("Ready");
   const [showTranscript, setShowTranscript] = useState(true);
   const [textInput, setTextInput] = useState("");
+  const [isLive, setIsLive] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const speakingRef = useRef<boolean>(false);
+
+  // Initialize ElevenLabs Conversational AI hook
+  const conversation = useConversation({
+    onConnect: () => {
+      setCallState("active");
+      setAiStatus("Agent connected (Live)");
+    },
+    onDisconnect: () => {
+      setCallState("ended");
+      setAiStatus("Call ended");
+    },
+    onMessage: (message) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: message.source === "ai" ? "ai" : "user",
+          text: message.message,
+          timestamp: new Date(),
+        },
+      ]);
+    },
+    onError: (error) => {
+      console.error("ElevenLabs Conversation error:", error);
+      if (callState === "connecting") {
+        setIsLive(false);
+        startSimulatedCall();
+      } else {
+        setAiStatus("Connection error");
+        setCallState("ended");
+      }
+    },
+  });
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -207,12 +241,11 @@ export default function DemoCallPage() {
     };
   }, []);
 
-  const startCall = () => {
-    if (!scenario) return;
+  const startSimulatedCall = () => {
     setCallState("connecting");
     setMessages([]);
     setElapsed(0);
-    setAiStatus("Connecting...");
+    setAiStatus("Connecting to simulation...");
     setIsMuted(false);
     speakingRef.current = false;
 
@@ -230,16 +263,55 @@ export default function DemoCallPage() {
     }, 2000);
   };
 
-  const endCall = useCallback(() => {
+  const startCall = async () => {
+    if (!scenario) return;
+    setCallState("connecting");
+    setMessages([]);
+    setElapsed(0);
+    setAiStatus("Initializing voice session...");
+    setIsMuted(false);
+    speakingRef.current = false;
+
+    try {
+      const response = await fetch("/api/voice/session", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Voice session endpoint returned error");
+      }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error("Failed to retrieve signed session URL");
+      }
+
+      setIsLive(true);
+      await conversation.startSession({
+        signedUrl: data.url,
+      });
+    } catch (err) {
+      console.warn("Live voice agent connection failed, falling back to simulated browser mode:", err);
+      setIsLive(false);
+      startSimulatedCall();
+    }
+  };
+
+  const endCall = useCallback(async () => {
     setCallState("ended");
     setAiStatus("Call ended");
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+    if (isLive) {
+      try {
+        await conversation.endSession();
+      } catch (err) {
+        console.error("Failed to disconnect live session:", err);
+      }
+    } else {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
     }
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort(); } catch {}
-    }
-  }, []);
+  }, [isLive, conversation]);
+
 
   const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -429,17 +501,25 @@ export default function DemoCallPage() {
                     onClick={() => {
                       const nextMuted = !isMuted;
                       setIsMuted(nextMuted);
-                      if (nextMuted) {
-                        if (recognitionRef.current) {
-                          try { recognitionRef.current.abort(); } catch {}
+                      if (isLive) {
+                        try {
+                          conversation.setMuted(nextMuted);
+                        } catch (err) {
+                          console.error("Failed to set mute state:", err);
                         }
-                        setAiStatus("Muted");
                       } else {
-                        if (callState === "active" && !speakingRef.current) {
-                          setAiStatus("AI is listening...");
-                          setTimeout(() => {
-                            startListening();
-                          }, 50);
+                        if (nextMuted) {
+                          if (recognitionRef.current) {
+                            try { recognitionRef.current.abort(); } catch {}
+                          }
+                          setAiStatus("Muted");
+                        } else {
+                          if (callState === "active" && !speakingRef.current) {
+                            setAiStatus("AI is listening...");
+                            setTimeout(() => {
+                              startListening();
+                            }, 50);
+                          }
                         }
                       }
                     }}
